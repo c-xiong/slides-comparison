@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LDA Look-Ahead Bias: Method Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Source+Sans+3:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --text: #111111;
+  --muted: #555555;
+  --light: #888888;
+  --rule: #cccccc;
+  --accent: #1a3a6b;
+  --accent2: #8b1a1a;
+  --green: #1a5c2a;
+  --sans: 'Source Sans 3', 'Helvetica Neue', sans-serif;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+html {
+  font-size: 24px;
+}
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  font-family: var(--sans);
+  color: var(--text);
+}
+
+.slide {
+  display: none;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 5vh 7vw 7vh;
+  position: relative;
+  background: var(--bg);
+}
+.slide.active { display: flex; }
+.slide.active { animation: appear 0.25s ease both; }
+@keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* allow scrolling on content-heavy slides */
+.slide.scrollable {
+  overflow-y: auto;
+}
+
+#nav {
+  position: fixed;
+  bottom: 24px; right: 32px;
+  display: flex; gap: 6px;
+  z-index: 100;
+}
+#nav button {
+  background: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  width: 34px; height: 34px;
+  font-size: 15px; cursor: pointer;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+#nav button:hover { background: #e4e4e4; }
+
+#counter {
+  position: fixed;
+  bottom: 30px; left: 32px;
+  font-size: 13px;
+  color: var(--light);
+  font-family: var(--sans);
+  z-index: 100;
+  letter-spacing: 0.04em;
+}
+
+#progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+  z-index: 200;
+}
+
+/* ── typography ── */
+.slide-title {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.slide-subtitle {
+  font-size: 1.15rem;
+  color: var(--muted);
+  font-weight: 300;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.section-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--light);
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+h3 {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+p, li {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #333;
+}
+hr.rule {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 16px 0;
+}
+
+/* ── blockquote ── */
+blockquote {
+  border-left: 2.5px solid #c8c8c8;
+  padding: 10px 18px;
+  margin: 10px 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.94rem;
+  color: #444;
+  line-height: 1.68;
+}
+blockquote cite {
+  display: block;
+  margin-top: 5px;
+  font-style: normal;
+  font-size: 0.84em;
+  color: var(--light);
+  font-family: var(--sans);
+  font-weight: 600;
+}
+
+/* ── layouts ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  width: 100%;
+  margin-top: 4px;
+}
+.three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+/* ── divider header ── */
+.header-block {
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+/* ── full comparison table ── */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  margin-top: 10px;
+}
+.comparison-table th {
+  text-align: left;
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--light);
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.comparison-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e8e8e8;
+  color: #333;
+  vertical-align: top;
+  line-height: 1.45;
+}
+.comparison-table tr:last-child td { border-bottom: none; }
+.comparison-table tr.row-rec td {
+  background: #f2f6ff;
+  font-weight: 600;
+}
+.comparison-table tr.row-rec td:first-child {
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+.comparison-table tr.row-rej td { background: #fafafa; color: #777; }
+.comparison-table tr.row-rej td:first-child { border-left: 3px solid #ccc; }
+.comparison-table tr:not(.row-rec):not(.row-rej) td:first-child { border-left: 3px solid transparent; }
+
+/* ── method card (for overview) ── */
+.method-card {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 16px 18px;
+  background: #fff;
+}
+.method-card.recommended { border-color: var(--accent); background: #f4f8ff; }
+.method-card.rejected { border-color: #c0c0c0; background: #fafafa; }
+.method-card .tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+.tag-blue   { background: #dce8ff; color: var(--accent); }
+.tag-green  { background: #d5f0dd; color: var(--green); }
+.tag-red    { background: #fde8e8; color: var(--accent2); }
+.tag-gray   { background: #eeeeee; color: #666; }
+.tag-purple { background: #ede8ff; color: #4b2a9e; }
+.method-card h4 { font-size: 1.02rem; font-weight: 700; margin-bottom: 5px; color: var(--text); }
+.method-card p { font-size: 0.9rem; line-height: 1.58; color: #555; }
+.method-card .status { margin-top: 8px; font-size: 0.8rem; color: var(--light); border-top: 1px solid #eee; padding-top: 7px; }
+
+/* ── list styles ── */
+ul.plain { list-style: none; padding: 0; }
+ul.plain li { padding: 9px 0; border-bottom: 1px solid #efefef; font-size: 1rem; line-height: 1.68; }
+ul.plain li:last-child { border-bottom: none; }
+
+ol.numbered { padding-left: 1.4em; }
+ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
+
+/* ── label-row ── */
+.label-row { display: grid; grid-template-columns: 170px 1fr; gap: 16px; align-items: start; padding: 12px 0; border-bottom: 1px solid #efefef; }
+.label-row:last-child { border-bottom: none; }
+.label-row .label { font-size: 0.9rem; font-weight: 700; color: var(--accent2); line-height: 1.4; }
+.label-row .label span { font-weight: 400; color: var(--light); }
+.label-row .body { font-size: 0.95rem; color: #333; line-height: 1.68; }
+
+/* ── K table ── */
+.k-table { border-collapse: collapse; font-size: 1rem; width: 100%; }
+.k-table th { text-align: left; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--light); padding: 8px 16px; border-bottom: 2px solid var(--text); font-weight: 700; }
+.k-table td { padding: 10px 16px; border-bottom: 1px solid #efefef; color: #333; vertical-align: top; }
+.k-table tr:last-child td { border-bottom: none; }
+.k-table tr.highlight td { background: #f2f6ff; font-weight: 700; color: var(--accent); }
+
+/* ── action/decision list ── */
+.action-list { list-style: none; padding: 0; }
+.action-list li { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid #efefef; align-items: flex-start; }
+.action-list li:last-child { border-bottom: none; }
+.action-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; padding: 3px 9px; border-radius: 3px; white-space: nowrap; margin-top: 4px; flex-shrink: 0; }
+.p0 { background: #fde8e8; color: var(--accent2); }
+.p1 { background: #fff4d6; color: #7a4d00; }
+.p2 { background: #eeeeee; color: #555; }
+.main-tag { background: #dce8ff; color: var(--accent); }
+.rob-tag { background: #d5f0dd; color: var(--green); }
+.app-tag { background: #eeeeee; color: #555; }
+.action-body { font-size: 1rem; line-height: 1.68; color: #333; }
+
+/* ── title slide ── */
+.title-rule { width: 48px; height: 4px; background: var(--accent); border-radius: 2px; margin-bottom: 22px; }
+
+/* ── note ── */
+.note { font-size: 0.88rem; color: var(--light); margin-top: 12px; line-height: 1.6; }
+
+/* ── leakage boxes ── */
+.leakage-box {
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  padding: 20px 22px;
+}
+.leakage-box .ltag {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 3px; display: inline-block; margin-bottom: 12px;
+}
+
+/* ── venue row ── */
+.venue-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.venue-chip { font-size: 0.8rem; padding: 2px 10px; border-radius: 20px; border: 1px solid #d0d0d0; color: #555; }
+.venue-chip.strict { border-color: var(--accent2); color: var(--accent2); }
+.venue-chip.ok { border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div id="counter"></div>
+<div id="nav">
+  <button onclick="go(-1)">←</button>
+  <button onclick="go(1)">→</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 1. Title -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+    <div class="title-rule"></div>
+    <div class="slide-title" style="max-width: 820px;">LDA Look-Ahead Bias:<br>Method Comparison</div>
+    <div class="slide-subtitle" style="margin-top: 16px; max-width: 640px;">
+      LDA training design selection for narrative-based inflation forecasting
+    </div>
+    <hr class="rule" style="margin-top: 28px; max-width: 820px;">
+    <div style="display: grid; grid-template-columns: repeat(3, auto) 1fr; gap: 32px; margin-top: 20px; max-width: 820px; align-items: start;">
+      <div>
+        <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--light); font-weight: 700; margin-bottom: 5px;">Recommendation</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent);">Method C + Method A robustness</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--light); font-weight: 700; margin-bottom: 5px;">K (pre-specified)</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: var(--text);">180</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--light); font-weight: 700; margin-bottom: 5px;">Closest precedent</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: var(--text);">Hong et al. (2025, JBES)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 2. Two leakage problems -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <div class="header-block">
+    <div class="section-label">Background</div>
+    <div class="slide-title">Two distinct leakage concerns</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px; gap: 28px;">
+    <div class="leakage-box">
+      <span class="ltag" style="background:#fde8e8; color:var(--accent2);">L1.2 — Preprocessing leakage</span>
+      <p>If LDA is fit on the full 1982–2025 corpus, the topic representation of an article from, say, 2005 is informed by term-count statistics that include 2010–2025 text.</p>
+      <blockquote style="margin-top: 14px;">
+        "θ̂_t is informed in part by term counts that realize after time t."
+        <cite>Bybee et al. (2024, JF, p. 3114)</cite>
+      </blockquote>
+    </div>
+    <div class="leakage-box">
+      <span class="ltag" style="background:#fde8e8; color:var(--accent2);">L1.3 — Hyperparameter selection leakage</span>
+      <p>If K is chosen by minimizing OOS forecast RMSE on a grid, then K itself is a function of the test set. This is unambiguous test-set contamination.</p>
+      <blockquote style="margin-top: 14px;">
+        Kapoor &amp; Narayanan (2023, <em>Patterns</em>) taxonomy of ML leakage.
+      </blockquote>
+      <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
+        <strong>Ver1 had both L1.2 and L1.3.</strong><br>
+        Ver2 fixed both but introduced multi-checkpoint reestimation with no clear precedent in this literature.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 3. Four methods — FULL TABLE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide scrollable" id="s2">
+  <div class="header-block">
+    <div class="section-label">Literature Survey</div>
+    <div class="slide-title">Four methods available in the literature</div>
+  </div>
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Name</th>
+        <th>Key papers (venue)</th>
+        <th>LDA training data</th>
+        <th>OOS topic representation</th>
+        <th>L1.2 status</th>
+        <th>Precedent strength</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>A</strong></td>
+        <td>Single-checkpoint frozen</td>
+        <td>Larsen &amp; Thorsrud (2019, <em>J. Econometrics</em>); Ellingsen et al. (2022, <em>J. Applied Econometrics</em>); Larsen, Thorsrud, Zhulanova (2021, <em>J. Monetary Economics</em>)</td>
+        <td>Pre-OOS training sample only</td>
+        <td>Frozen LDA applied via <code>.transform()</code> to all post-cutoff articles</td>
+        <td>Fixed</td>
+        <td>Very strong (3 papers, all top-field)</td>
+      </tr>
+      <tr>
+        <td><strong>B</strong></td>
+        <td>Online LDA (oLDA)</td>
+        <td>Bybee, Kelly, Manela, Xiu (2024, <em>J. Finance</em>)</td>
+        <td>Sequentially expanded; at time t uses only data up to t</td>
+        <td>LDA updated sequentially via Hoffman–Bach–Blei (2010) variational online algorithm</td>
+        <td>Fixed</td>
+        <td>Strong (1 paper, JF) — technically demanding</td>
+      </tr>
+      <tr class="row-rec">
+        <td><strong>C ★</strong><br><span style="font-size:0.82em;font-weight:700;color:#1a5c2a;background:#d5f0dd;padding:1px 6px;border-radius:3px;white-space:nowrap;">our Ver1</span></td>
+        <td>Full-sample</td>
+        <td>Hong, Jiang, Meng, Xue (2025, <em>J. Business and Economic Statistics</em>)</td>
+        <td>Entire 1984–2021 corpus</td>
+        <td>Full-sample LDA distributions used as fixed features</td>
+        <td>Not fixed</td>
+        <td>Single direct precedent (JBES); bias shown empirically small by multiple papers</td>
+      </tr>
+      <tr class="row-rej">
+        <td><strong>D ✗</strong><br><span style="font-size:0.82em;font-weight:700;color:#8b1a1a;background:#fde8e8;padding:1px 6px;border-radius:3px;white-space:nowrap;">our Ver2</span></td>
+        <td>Multi-checkpoint rolling reestimation</td>
+        <td>No mainstream precedent in this literature</td>
+        <td>Several disjoint pre-cutoff windows, each fit independently</td>
+        <td>Document gets the most-recent-available checkpoint's topic distribution</td>
+        <td>Fixed — but introduces topic-identity discontinuity</td>
+        <td>None — explicitly warned against in Bybee et al. (2024)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top: 10px;">★ Recommended main specification. ✗ Not recommended.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 4. Method A detail -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="header-block">
+    <div class="section-label">Method A — Single-Checkpoint Frozen LDA</div>
+    <div class="slide-title">Three top-field papers; acknowledged staleness cost</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px;">
+    <div>
+      <blockquote>
+        "the news corpus is truncated to end on the last day of 2003, and 80 news topics are estimated using the LDA model. Then, using the estimated topic distributions from the truncated news corpus, the corpus for the period 2004 to 2014 is classified… the sampler is run with the estimated word distributions (from the training sample) held constant."
+        <cite>Larsen &amp; Thorsrud (2019, J. Econometrics, p. 209)</cite>
+      </blockquote>
+      <blockquote style="margin-top: 12px;">
+        "to avoid potential look-ahead biases, the LDA model was estimated on the initial training sample only, that is, all the news after 1995Q4 is classified OOS using the topic distributions learned from the 1985Q1 to 1995Q4 sample."
+        <cite>Ellingsen et al. (2022, J. Applied Econometrics, Section 3 footnote)</cite>
+      </blockquote>
+    </div>
+    <div>
+      <blockquote>
+        "the average relative performance seems to deteriorate somewhat towards the end of the evaluation sample. One potential reason for this might be that the estimated topic distributions are not recursively updated when doing the out-of-sample experiment. At the end of the out-of-sample evaluation period we are in essence classifying the news corpus with 10-year-old topic estimates."
+        <cite>Larsen &amp; Thorsrud (2019, p. 210) — acknowledged cost</cite>
+      </blockquote>
+      <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
+        <strong>Our setting:</strong> With a 1998-01 cutoff, by 2025 we classify with ~27-year-old topic estimates.
+        Post-1998 themes (COVID, ESG, crypto, AI) have no native topic and are projected onto nearest 1998-era topic in word distribution.
+        We address this empirically by reporting Method A as a robustness check, not the main spec.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 5. Method B — why we don't adopt -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="header-block">
+    <div class="section-label">Method B — Online LDA (oLDA)</div>
+    <div class="slide-title">Four reasons we do not adopt oLDA</div>
+  </div>
+  <ul class="action-list" style="margin-top: 8px; max-width: 920px;">
+    <li>
+      <span class="action-tag p0">1</span>
+      <span class="action-body"><strong>Engineering cost.</strong> Our pipeline uses scikit-learn's <code>LatentDirichletAllocation</code> in a batch-then-freeze pattern. True oLDA forecasting requires interleaving <code>.transform()</code> and <code>.partial_fit()</code> inside the OOS loop, with hyperparameters (learning rate κ, decay τ₀, batch ordering by time) tuned to ensure convergence. This is a substantial re-engineering, not a parameter change.</span>
+    </li>
+    <li>
+      <span class="action-tag p0">2</span>
+      <span class="action-body"><strong>Burn-in cost.</strong> Bybee et al. (2024, p. 3141) drop the first 4 years of their sample for oLDA burn-in. Our OOS window already starts 2014-01 due to the 192-month initial training requirement; adding a 4-year burn-in further shortens an already COVID-dominated window.</span>
+    </li>
+    <li>
+      <span class="action-tag p1">3</span>
+      <span class="action-body"><strong>Marginal benefit is reported as small</strong> (Bybee et al. 2024, p. 3132): <em>"the differences are quantitatively minor. From a parameter uncertainty perspective, at short horizons LDA and oLDA estimates are distinct, but at longer horizons they are statistically indistinguishable."</em></span>
+    </li>
+    <li>
+      <span class="action-tag p1">4</span>
+      <span class="action-body"><strong>Defensible cheaper alternative exists.</strong> Method A captures the leakage-fix benefit at much lower engineering cost and has stronger precedent in this specific literature — three top-field papers vs one.</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 6. Method C — evidence bias is small -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="header-block">
+    <div class="section-label">Method C — Full-Sample LDA (Recommended Main Spec)</div>
+    <div class="slide-title">Four independent sources: bias is empirically small</div>
+  </div>
+  <div style="margin-top: 8px; max-width: 900px;">
+    <blockquote>
+      "when estimating the LDA using the full sample of news data, and then simply truncating the resulting news topics time series for the OOS forecasting experiment, we observe that the results from Section 4.1 remain qualitatively robust (Figure SD7). As also commented on in Larsen and Thorsrud (2019), this suggests that the issue related to look-ahead biases likely is not very empirically important."
+      <cite>Ellingsen et al. (2022, Figure SD7)</cite>
+    </blockquote>
+    <blockquote style="margin-top: 10px;">
+      "the differences [between full-sample LDA and oLDA] are quantitatively minor. From a parameter uncertainty perspective, at short horizons LDA and oLDA estimates are distinct, but at longer horizons they are statistically indistinguishable."
+      <cite>Bybee et al. (2024, Figure 6 / Section IV.C, p. 3132)</cite>
+    </blockquote>
+    <div style="margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="padding: 12px 16px; background: #f8f8f8; border-radius: 3px; font-size: 0.98rem; color: #444; line-height: 1.6;">
+        <strong>Larsen &amp; Thorsrud (2019, p. 211)</strong><br>
+        Full-sample experiment delivers results consistent with the truncated-training experiment.
+      </div>
+      <div style="padding: 12px 16px; background: #f8f8f8; border-radius: 3px; font-size: 0.98rem; color: #444; line-height: 1.6;">
+        <strong>Hong et al. (2025)</strong><br>
+        Accepted at JBES with no leakage-fix robustness check reported. Sets the floor for this literature.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 7. Method D — why rejected -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="header-block">
+    <div class="section-label">Method D — Multi-Checkpoint Rolling Reestimation (Our Ver2)</div>
+    <div class="slide-title">No mainstream precedent; explicitly rejected in the literature</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px;">
+    <div>
+      <blockquote>
+        "unlike rolling reestimation, which faces the issue that <strong>topics in one rolling sample are delinked from topics in a prior sample</strong>, oLDA preserves a coherent topic interpretation over time (while accommodating evolving topics)."
+        <cite>Bybee et al. (2024, JF, p. 3114)</cite>
+      </blockquote>
+      <blockquote style="margin-top: 12px;">
+        "Ideally, one might have preferred also updating the topic model recursively. However, recursively re-estimating the topic model is a very computationally demanding task, and building up the posterior distributions takes roughly one week using our infrastructure."
+        <cite>Larsen &amp; Thorsrud (2019, pp. 209–210)</cite>
+      </blockquote>
+      <p class="note" style="margin-top: 10px;">Two independent papers in this literature considered recursive reestimation and rejected it. The Bybee critique applies to our Ver2's disjoint checkpoints regardless of whether windows roll or expand.</p>
+    </div>
+    <div>
+      <p style="font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 10px;">Additional concerns (our analysis):</p>
+      <ul class="plain">
+        <li><strong>Topic ID instability.</strong> Our disjoint design produces LDA uniqueness ratio 0.86 vs BERTopic 0.45 across checkpoints. Partly induced by the design choice itself — a pedantic reviewer can argue this is a stress test, not an intrinsic LDA property.</li>
+        <li><strong>Feature-to-observation ratio.</strong> ~4×150 = 600 topic features vs ~138 OOS months. Hong et al. ratio: 180 features / 258 months — our Ver2 is harder on regularization.</li>
+        <li><strong>Structural break at checkpoint boundaries.</strong> Feature dimensionality expands when the calendar crosses a cutoff, creating a discontinuity inside the OOS window.</li>
+        <li><strong>Empirical results.</strong> Ver2 LDA (K=150) rRMSE: 0.876 / 0.872 / 0.886 / 0.851 vs AR. Weaker than Hong et al.'s WSJ-LDA at 12m ≈ 0.696.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 8. K pre-specification -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="header-block">
+    <div class="section-label">Hyperparameter Selection</div>
+    <div class="slide-title">K must be pre-specified — recommendation: K = 180</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px;">
+    <div>
+      <table class="k-table">
+        <thead><tr><th>K</th><th>Source</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>80</td><td>Larsen &amp; Thorsrud (2019); Ellingsen et al. (2022); Larsen et al. (2021)</td><td>Main</td></tr>
+          <tr><td>150</td><td>Hong et al. (2025)</td><td>Robustness</td></tr>
+          <tr class="highlight"><td>180 ★</td><td>Bybee et al. (2024) main; Hong et al. (2025) main</td><td><strong>Main — recommended</strong></td></tr>
+          <tr><td>250</td><td>Hong et al. (2025) robustness; Bybee et al. (2024) discussion</td><td>Robustness</td></tr>
+        </tbody>
+      </table>
+      <p class="note" style="margin-top: 12px;">Our recommendation: K = 180 main, K = 150 and K = 250 as robustness, exactly mirroring Hong et al. (2025). Any K choice must be made <em>before</em> looking at OOS results.</p>
+    </div>
+    <div>
+      <blockquote>
+        "K = 180 is a sensible choice. A model with fewer topics (e.g., 50) produces mixed topics that contain multiple separate themes. A larger model (e.g., 250 topics) delivers similar interpretability as that for the 180-topic model, but with a number of overly specific topics that capture one-off events. Finally, all models in the neighborhood of K = 180 look very similar in their topic composition."
+        <cite>Bybee et al. (2024, p. 3114)</cite>
+      </blockquote>
+      <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
+        <strong>Ver1 problem (L1.3):</strong> K = 2000 was selected by grid-searching {100, 250, 500, 727, 1000, 1500, 2000, 2500, 3000} and picking the K minimizing OOS ENet RMSE. This is hyperparameter selection on the test set and is not defensible. K = 2000 must be replaced regardless of which method we adopt.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 9. Anticipated reviewer pushback -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide scrollable" id="s8">
+  <div class="header-block">
+    <div class="section-label">Anticipated Reviewer Pushback</div>
+    <div class="slide-title">Four reviewer clusters and our defenses</div>
+  </div>
+  <div style="margin-top: 8px; max-width: 960px;">
+    <div class="label-row">
+      <div class="label">Pushback 1<br><span>"Bybee-style" — JF / RFS</span></div>
+      <div class="body">
+        <em>Likely review text:</em> "The authors estimate LDA on the full corpus… As Bybee et al. (2024, p. 3114) note, θ̂_t is informed in part by term counts that realize after t. The authors should use Online LDA or estimate LDA on a pre-OOS training sample only."<br><br>
+        <strong>Defense:</strong> Following Hong et al. (2025). Cite Ellingsen et al. (2022) and Bybee et al. (2024) that bias is "qualitatively minor." Back with our own Method A robustness numbers at K = 180. <strong>Requires actually running Method A at K = 180.</strong>
+      </div>
+    </div>
+    <div class="label-row">
+      <div class="label">Pushback 2<br><span>K-grid leakage — any ML-aware reviewer</span></div>
+      <div class="body">
+        <em>Likely review text:</em> "The authors search over a grid of K values and select the K with the lowest OOS RMSE. This is feature/hyperparameter selection on the test set [Kapoor &amp; Narayanan 2023]. The reported gains are not credible."<br><br>
+        <strong>Defense:</strong> K pre-specified at 180 following Bybee et al. (2024) and Hong et al. (2025). K = 150 and K = 250 as robustness. K-sensitivity table shows stability across K = 100–250, demonstrating we are not exploiting a fragile sweet spot.
+      </div>
+    </div>
+    <div class="label-row">
+      <div class="label">Pushback 3<br><span>Why not as large as Hong's?</span></div>
+      <div class="body">
+        Hong et al. (2025) report 12m LDA-ENet vs AR ≈ 0.696. Our Method A at 12m ≈ 0.851. The 0.16 gap looks bad in isolation.<br><br>
+        <strong>Defense:</strong> Hong et al. OOS: 2000–2021 (~258 months, 3 recession episodes — dot-com bust, 2008 GFC, COVID). Our OOS: 2014–2025 (~138 months, COVID-dominated, one calm-period baseline). Hong et al. (2025, p. 217): <em>"outperformance of narrative-based forecasts is mainly documented during recession periods."</em> We have one such episode; they have three.
+      </div>
+    </div>
+    <div class="label-row">
+      <div class="label">Pushback 4<br><span>Why not oLDA? (sophisticated variant of #1)</span></div>
+      <div class="body">
+        <strong>Defense:</strong> Engineering cost vs marginal benefit. Bybee et al. (2024, p. 3132): gain is "quantitatively minor" and "statistically indistinguishable at long horizons." oLDA burn-in (4 years, Bybee et al. p. 3141) further shortens our already COVID-dominated OOS window. We instead report Method A (following Larsen &amp; Thorsrud 2019; Ellingsen et al. 2022) as our look-ahead-corrected robustness check.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 10. Decision summary -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="header-block">
+    <div class="section-label">Decision Summary</div>
+    <div class="slide-title">Recommended path and priority action items</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px; align-items: start;">
+    <div>
+      <p style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">Recommended specification</p>
+      <ul class="action-list">
+        <li><span class="action-tag main-tag">Main</span><span class="action-body"><strong>Method C, K = 180</strong> — full-sample LDA, pre-specified following Bybee et al. (2024) and Hong et al. (2025).</span></li>
+        <li><span class="action-tag rob-tag">Rob. 1</span><span class="action-body">Method C at <strong>K = 150 and K = 250</strong> — mirrors Hong et al. (2025) robustness exactly.</span></li>
+        <li><span class="action-tag rob-tag">Rob. 2</span><span class="action-body"><strong>Method A at K = 180</strong> — training-only frozen LDA, following Ellingsen et al. (2022). We have Method A at K = 150 from Ver2 (0.876 / 0.872 / 0.886 / 0.851). Re-run at K = 180.</span></li>
+        <li><span class="action-tag rob-tag">Rob. 3</span><span class="action-body"><strong>K-sensitivity grid</strong> — descriptive only; not used to select K. Caption: "for reference, not used to select K."</span></li>
+        <li><span class="action-tag app-tag">Appendix</span><span class="action-body"><strong>Method D results</strong> — framed as topic-identity stability analysis. Does not drive headline numbers.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">What to run</p>
+      <ul class="action-list">
+        <li><span class="action-tag p0">P0</span><span class="action-body">Re-run full-sample LDA at <strong>K = 180</strong> (replaces K = 2000 in Ver1).</span></li>
+        <li><span class="action-tag p0">P0</span><span class="action-body">Re-run <strong>K-sensitivity grid</strong> as descriptive output, not for K selection.</span></li>
+        <li><span class="action-tag p1">P1</span><span class="action-body">Re-run <strong>Method A at K = 180</strong>. One additional pipeline execution beyond existing K = 150 run.</span></li>
+        <li><span class="action-tag p2">P2</span><span class="action-body">Keep Method D results from Ver2; demote to appendix as "topic-identity stability across cutoffs: exploratory analysis." (Optional)</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 11. Paper contribution + open questions -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="header-block">
+    <div class="section-label">Open Questions for Discussion</div>
+    <div class="slide-title">Contribution framing and four open questions</div>
+  </div>
+  <div class="two-col" style="margin-top: 8px; align-items: start;">
+    <div>
+      <p style="font-size: 0.88rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">Paper contribution (not "we beat AR by X%")</p>
+      <ol class="numbered">
+        <li style="margin-bottom: 8px;"><strong>Extend the framework to the FT corpus</strong> — a global business news source distinct from Hong et al.'s Wall Street Journal.</li>
+        <li style="margin-bottom: 8px;"><strong>Compare LDA vs BERTopic</strong> on the same inflation forecasting task. This comparison does not appear in Hong et al. (2025), Bybee et al. (2024), or the Larsen–Thorsrud–Ellingsen line.</li>
+        <li><strong>Topic-quality and topic-identity stability diagnostics</strong> not provided in this form by prior literature.</li>
+      </ol>
+      <p class="note" style="margin-top: 12px;">These contributions hold regardless of whether the main spec is C or A — which is what makes the C-with-A-robustness combination a low-risk choice.</p>
+    </div>
+    <div>
+      <p style="font-size: 0.88rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">Open questions</p>
+      <ul class="plain">
+        <li><strong>Q1.</strong> Comfortable defending Method C with the four-source "bias is minor" argument plus a Method A robustness section?</li>
+        <li><strong>Q2.</strong> Keep any Method D content in the main paper, or move entirely to appendix?</li>
+        <li>
+          <strong>Q3. Target venue?</strong>
+          <div class="venue-row">
+            <span class="venue-chip ok">JBES</span>
+            <span class="venue-chip ok">JAE</span>
+            <span class="venue-chip ok">IJF</span>
+            <span class="venue-chip ok">J. Forecasting</span>
+            <span class="venue-chip strict">JF</span>
+            <span class="venue-chip strict">RFS</span>
+          </div>
+          <span style="font-size: 0.9rem; color: var(--muted);">Green: Method C + A should suffice. Red: reviewers may insist on oLDA (Method B).</span>
+        </li>
+        <li><strong>Q4.</strong> K = 180 settled? Switching to K = 150 mid-discussion looks like K-selection-on-results unless pre-justified.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let cur = 0;
+const total = slides.length;
+
+function show(n) {
+  slides[cur].classList.remove('active');
+  cur = ((n % total) + total) % total;
+  slides[cur].classList.add('active');
+  document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+  document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+}
+
+function go(dir) { show(cur + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); go(-1); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End')  show(total - 1);
+});
+
+let tx = null;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  if (tx === null) return;
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  tx = null;
+});
+
+show(0);
+</script>
+</body>
+</html>
