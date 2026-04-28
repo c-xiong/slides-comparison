@@ -357,12 +357,12 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
     <div class="leakage-box">
       <span class="ltag" style="background:#fde8e8; color:var(--accent2);">L1.3 — Hyperparameter selection leakage</span>
       <p>If K is chosen by minimizing OOS forecast RMSE on a grid, then K itself is a function of the test set. This is unambiguous test-set contamination.</p>
-      <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
-        <strong>Ver1 had both L1.2 and L1.3.</strong><br>
-        Ver2 fixed both but introduced multi-checkpoint reestimation with no clear precedent in this literature.
-      </p>
     </div>
   </div>
+  <p style="margin-top: 18px; font-size: 0.97rem; color: var(--muted);">
+    <strong>Ver1 had both L1.2 and L1.3.</strong><br>
+    Ver2 fixed both but introduced multi-checkpoint reestimation with no clear precedent in this literature.
+  </p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
