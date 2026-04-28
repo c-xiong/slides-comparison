@@ -343,6 +343,7 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
   <div class="header-block">
     <div class="section-label">Background</div>
     <div class="slide-title">Two distinct leakage concerns</div>
+    <div style="font-size:0.88em; color:var(--muted); margin-top:4px;">Source: Kapoor and Narayanan - 2023 - Leakage and the reproducibility crisis in machine-learning-based science</div>
   </div>
   <div class="two-col" style="margin-top: 8px; gap: 28px;">
     <div class="leakage-box">
@@ -350,15 +351,12 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
       <p>If LDA is fit on the full 1982–2025 corpus, the topic representation of an article from, say, 2005 is informed by term-count statistics that include 2010–2025 text.</p>
       <blockquote style="margin-top: 14px;">
         "θ̂_t is informed in part by term counts that realize after time t."
-        <cite>Bybee et al. (2024, JF, p. 3114)</cite>
+        <cite>Bybee et al. - 2024 - Business News and Business Cycles (p. 3114)</cite>
       </blockquote>
     </div>
     <div class="leakage-box">
       <span class="ltag" style="background:#fde8e8; color:var(--accent2);">L1.3 — Hyperparameter selection leakage</span>
       <p>If K is chosen by minimizing OOS forecast RMSE on a grid, then K itself is a function of the test set. This is unambiguous test-set contamination.</p>
-      <blockquote style="margin-top: 14px;">
-        Kapoor &amp; Narayanan (2023, <em>Patterns</em>) taxonomy of ML leakage.
-      </blockquote>
       <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
         <strong>Ver1 had both L1.2 and L1.3.</strong><br>
         Ver2 fixed both but introduced multi-checkpoint reestimation with no clear precedent in this literature.
@@ -391,7 +389,14 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
       <tr>
         <td><strong>A</strong></td>
         <td>Single-checkpoint frozen</td>
-        <td>Larsen &amp; Thorsrud (2019, <em>J. Econometrics</em>); Ellingsen et al. (2022, <em>J. Applied Econometrics</em>); Larsen, Thorsrud, Zhulanova (2021, <em>J. Monetary Economics</em>)</td>
+        <td>
+          Ellingsen et al. - 2022 - News media versus FRED-MD for macroeconomic forecasting<br>
+          <span style="color:#555;font-size:0.88em;">└─ Clean precedent: LDA explicitly trained on pre-cutoff sample, then frozen and applied to post-cutoff articles for real-time OOS forecasting</span><br><br>
+          Larsen et al. - 2021 - News-driven inflation expectations and information rigidities<br>
+          <span style="color:#555;font-size:0.88em;">└─ Indirect support: LDA is frozen, but the application is inflation expectations and information rigidities, not forecasting</span><br><br>
+          Larsen and Thorsrud - 2019 - The value of news for economic developments<br>
+          <span style="color:#555;font-size:0.88em;">└─ Weaker support: LDA trained on the full corpus (1988–2014); paper reports both full-sample and OOS experiments, so it contains a full-sample component</span>
+        </td>
         <td>Pre-OOS training sample only</td>
         <td>Frozen LDA applied via <code>.transform()</code> to all post-cutoff articles</td>
         <td>Fixed</td>
@@ -400,7 +405,7 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
       <tr>
         <td><strong>B</strong></td>
         <td>Online LDA (oLDA)</td>
-        <td>Bybee, Kelly, Manela, Xiu (2024, <em>J. Finance</em>)</td>
+        <td>Bybee et al. - 2024 - Business News and Business Cycles</td>
         <td>Sequentially expanded; at time t uses only data up to t</td>
         <td>LDA updated sequentially via Hoffman–Bach–Blei (2010) variational online algorithm</td>
         <td>Fixed</td>
@@ -409,11 +414,11 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
       <tr class="row-rec">
         <td><strong>C ★</strong><br><a href="https://chenfeixiong.com/slides-ver1/" target="_blank" style="font-size:0.82em;font-weight:700;color:#1a5c2a;background:#d5f0dd;padding:2px 7px;border-radius:3px;white-space:nowrap;text-decoration:underline;text-underline-offset:2px;display:inline-block;margin-top:3px;">our Ver1 — chenfeixiong.com/slides-ver1 ↗</a></td>
         <td>Full-sample</td>
-        <td>Hong, Jiang, Meng, Xue (2025, <em>J. Business and Economic Statistics</em>)</td>
+        <td>Hong et al. - 2025 - Forecasting Inflation Using Economic Narratives</td>
         <td>Entire 1984–2021 corpus</td>
         <td>Full-sample LDA distributions used as fixed features</td>
         <td>Not fixed</td>
-        <td>Single direct precedent (JBES); bias shown empirically small by multiple papers</td>
+        <td>Single direct precedent (Hong et al. 2025, JBES); bias shown empirically small by multiple papers</td>
       </tr>
       <tr class="row-rej">
         <td><strong>D ✗</strong><br><a href="https://chenfeixiong.com/slides-ver2/" target="_blank" style="font-size:0.82em;font-weight:700;color:#8b1a1a;background:#fde8e8;padding:2px 7px;border-radius:3px;white-space:nowrap;text-decoration:underline;text-underline-offset:2px;display:inline-block;margin-top:3px;">our Ver2 — chenfeixiong.com/slides-ver2 ↗</a></td>
@@ -441,17 +446,17 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
     <div>
       <blockquote>
         "the news corpus is truncated to end on the last day of 2003, and 80 news topics are estimated using the LDA model. Then, using the estimated topic distributions from the truncated news corpus, the corpus for the period 2004 to 2014 is classified… the sampler is run with the estimated word distributions (from the training sample) held constant."
-        <cite>Larsen &amp; Thorsrud (2019, J. Econometrics, p. 209)</cite>
+        <cite>Larsen and Thorsrud - 2019 - The value of news for economic developments (p. 209)</cite>
       </blockquote>
       <blockquote style="margin-top: 12px;">
         "to avoid potential look-ahead biases, the LDA model was estimated on the initial training sample only, that is, all the news after 1995Q4 is classified OOS using the topic distributions learned from the 1985Q1 to 1995Q4 sample."
-        <cite>Ellingsen et al. (2022, J. Applied Econometrics, Section 3 footnote)</cite>
+        <cite>Ellingsen et al. - 2022 - News media versus FRED-MD for macroeconomic forecasting (Section 3 footnote)</cite>
       </blockquote>
     </div>
     <div>
       <blockquote>
         "the average relative performance seems to deteriorate somewhat towards the end of the evaluation sample. One potential reason for this might be that the estimated topic distributions are not recursively updated when doing the out-of-sample experiment. At the end of the out-of-sample evaluation period we are in essence classifying the news corpus with 10-year-old topic estimates."
-        <cite>Larsen &amp; Thorsrud (2019, p. 210) — acknowledged cost</cite>
+        <cite>Larsen and Thorsrud - 2019 - The value of news for economic developments (p. 210) — acknowledged cost</cite>
       </blockquote>
       <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
         <strong>Our setting:</strong> With a 1998-01 cutoff, by 2025 we classify with ~27-year-old topic estimates.
@@ -493,30 +498,35 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
 <!-- ═══════════════════════════════════════════════════════ -->
 <!-- 6. Method C — evidence bias is small -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div class="slide" id="s5">
+<div class="slide scrollable" id="s5">
   <div class="header-block">
     <div class="section-label">Method C — Full-Sample LDA (Recommended Main Spec)</div>
-    <div class="slide-title">Four independent sources: bias is empirically small</div>
+    <div class="slide-title">Full-sample LDA leakage: quantitatively minor in three studies, accepted without check in a Hong et al.</div>
   </div>
-  <div style="margin-top: 8px; max-width: 900px;">
+  <div style="margin-top: 10px; max-width: 900px;">
+
+    <p style="font-size: 0.63rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--light); margin-bottom: 8px;">Empirical robustness checks (bias is quantitatively small)</p>
+
     <blockquote>
       "when estimating the LDA using the full sample of news data, and then simply truncating the resulting news topics time series for the OOS forecasting experiment, we observe that the results from Section 4.1 remain qualitatively robust (Figure SD7). As also commented on in Larsen and Thorsrud (2019), this suggests that the issue related to look-ahead biases likely is not very empirically important."
-      <cite>Ellingsen et al. (2022, Figure SD7)</cite>
+      <cite>Ellingsen et al. - 2022 - News media versus FRED-MD for macroeconomic forecasting (Figure SD7)</cite>
     </blockquote>
-    <blockquote style="margin-top: 10px;">
+    <blockquote style="margin-top: 8px;">
       "the differences [between full-sample LDA and oLDA] are quantitatively minor. From a parameter uncertainty perspective, at short horizons LDA and oLDA estimates are distinct, but at longer horizons they are statistically indistinguishable."
-      <cite>Bybee et al. (2024, Figure 6 / Section IV.C, p. 3132)</cite>
+      <cite>Bybee et al. - 2024 - Business News and Business Cycles (Figure 6 / Section IV.C, p. 3132)</cite>
     </blockquote>
-    <div style="margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-      <div style="padding: 12px 16px; background: #f8f8f8; border-radius: 3px; font-size: 0.98rem; color: #444; line-height: 1.6;">
-        <strong>Larsen &amp; Thorsrud (2019, p. 211)</strong><br>
-        Full-sample experiment delivers results consistent with the truncated-training experiment.
-      </div>
-      <div style="padding: 12px 16px; background: #f8f8f8; border-radius: 3px; font-size: 0.98rem; color: #444; line-height: 1.6;">
-        <strong>Hong et al. (2025)</strong><br>
-        Accepted at JBES with no leakage-fix robustness check reported. Sets the floor for this literature.
-      </div>
+    <div style="margin-top: 8px; padding: 10px 18px; border-left: 2.5px solid #c8c8c8; font-family: var(--serif); font-size: 0.94rem; color: #444; line-height: 1.68;">
+      <strong style="font-style: normal; font-family: var(--sans); font-size: 0.84em; color: var(--light); font-weight: 600;">Larsen and Thorsrud - 2019 - The value of news for economic developments (p. 211)</strong><br>
+      Full-sample experiment delivers results consistent with the truncated-training experiment; explicitly noted by Ellingsen et al. (2022) as supporting evidence.
     </div>
+
+    <p style="font-size: 0.63rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--light); margin-top: 16px; margin-bottom: 8px;">Publication precedent (top-field acceptance without the check)</p>
+
+    <div style="padding: 10px 18px; border-left: 2.5px solid #c8c8c8; font-family: var(--serif); font-size: 0.94rem; color: #444; line-height: 1.68;">
+      <strong style="font-style: normal; font-family: var(--sans); font-size: 0.84em; color: var(--light); font-weight: 600;">Hong et al. - 2025 - Forecasting Inflation Using Economic Narratives</strong><br>
+      Accepted at JBES with no leakage-fix robustness check reported. Sets the floor for this literature: referees did not require the check for publication.
+    </div>
+
   </div>
 </div>
 
@@ -532,11 +542,11 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
     <div>
       <blockquote>
         "unlike rolling reestimation, which faces the issue that <strong>topics in one rolling sample are delinked from topics in a prior sample</strong>, oLDA preserves a coherent topic interpretation over time (while accommodating evolving topics)."
-        <cite>Bybee et al. (2024, JF, p. 3114)</cite>
+        <cite>Bybee et al. - 2024 - Business News and Business Cycles (p. 3114)</cite>
       </blockquote>
       <blockquote style="margin-top: 12px;">
         "Ideally, one might have preferred also updating the topic model recursively. However, recursively re-estimating the topic model is a very computationally demanding task, and building up the posterior distributions takes roughly one week using our infrastructure."
-        <cite>Larsen &amp; Thorsrud (2019, pp. 209–210)</cite>
+        <cite>Larsen and Thorsrud - 2019 - The value of news for economic developments (pp. 209–210)</cite>
       </blockquote>
       <p class="note" style="margin-top: 10px;">Two independent papers in this literature considered recursive reestimation and rejected it. The Bybee critique applies to our Ver2's disjoint checkpoints regardless of whether windows roll or expand.</p>
     </div>
@@ -576,7 +586,7 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
     <div>
       <blockquote>
         "K = 180 is a sensible choice. A model with fewer topics (e.g., 50) produces mixed topics that contain multiple separate themes. A larger model (e.g., 250 topics) delivers similar interpretability as that for the 180-topic model, but with a number of overly specific topics that capture one-off events. Finally, all models in the neighborhood of K = 180 look very similar in their topic composition."
-        <cite>Bybee et al. (2024, p. 3114)</cite>
+        <cite>Bybee et al. - 2024 - Business News and Business Cycles (p. 3114)</cite>
       </blockquote>
       <p style="margin-top: 14px; font-size: 0.97rem; color: var(--muted);">
         <strong>Ver1 problem (L1.3):</strong> K = 2000 was selected by grid-searching {100, 250, 500, 727, 1000, 1500, 2000, 2500, 3000} and picking the K minimizing OOS ENet RMSE. This is hyperparameter selection on the test set and is not defensible. K = 2000 must be replaced regardless of which method we adopt.
@@ -656,9 +666,27 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- 11. Paper contribution + open questions -->
+<!-- 11. References -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div class="slide" id="s10">
+<div class="slide scrollable" id="s10-ref">
+  <div class="header-block">
+    <div class="section-label">References</div>
+    <div class="slide-title">All cited works</div>
+  </div>
+  <ul style="margin-top: 12px; line-height: 2; font-size: 0.97rem; color: var(--text); list-style: none; padding: 0; max-width: 900px;">
+    <li>Bybee et al. - 2024 - Business News and Business Cycles. <em>Journal of Finance</em>.</li>
+    <li>Ellingsen et al. - 2022 - News media versus FRED-MD for macroeconomic forecasting. <em>Journal of Applied Econometrics</em>.</li>
+    <li>Hong et al. - 2025 - Forecasting Inflation Using Economic Narratives. <em>Journal of Business and Economic Statistics</em>.</li>
+    <li>Kapoor and Narayanan - 2023 - Leakage and the reproducibility crisis in machine-learning-based science. <em>Patterns</em>.</li>
+    <li>Larsen and Thorsrud - 2019 - The value of news for economic developments. <em>Journal of Econometrics</em>.</li>
+    <li>Larsen et al. - 2021 - News-driven inflation expectations and information rigidities. <em>Journal of Monetary Economics</em>.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- 12. Paper contribution + open questions -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide" id="s11">
   <div class="header-block">
     <div class="section-label">Open Questions for Discussion</div>
     <div class="slide-title">Contribution framing and four open questions</div>
@@ -688,9 +716,9 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
             <span class="venue-chip strict">JF</span>
             <span class="venue-chip strict">RFS</span>
           </div>
-          <span style="font-size: 0.9rem; color: var(--muted);">Green: Method C + A should suffice. Red: reviewers may insist on oLDA (Method B).</span>
+          <span style="font-size: 0.9rem; color: var(--muted);">Green: Method C + A should work. Red: reviewers may insist on oLDA (Method B).</span>
         </li>
-        <li><strong>Q4.</strong> K = 180 settled? Switching to K = 150 mid-discussion looks like K-selection-on-results unless pre-justified.</li>
+        <li><strong>Q4.</strong> K = 180?</li>
       </ul>
     </div>
   </div>
