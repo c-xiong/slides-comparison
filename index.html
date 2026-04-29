@@ -534,29 +534,43 @@ ol.numbered li { padding: 7px 0; font-size: 1rem; line-height: 1.68; }
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="slide" id="s6">
   <div class="header-block">
-    <div class="section-label">Method D — Multi-Checkpoint Rolling Reestimation (Our Ver2)</div>
-    <div class="slide-title">No mainstream precedent; explicitly rejected in the literature</div>
+    <div class="section-label">Method D — Multi-Checkpoint Topic Re-Estimation(Our Ver2)</div>
+    <div class="slide-title">Real-time feasible, but not a clean robustness design</div>
   </div>
+
   <div class="two-col" style="margin-top: 8px;">
     <div>
       <blockquote>
-        "unlike rolling reestimation, which faces the issue that <strong>topics in one rolling sample are delinked from topics in a prior sample</strong>, oLDA preserves a coherent topic interpretation over time (while accommodating evolving topics)."
-        <cite>Bybee et al. - 2024 - Business News and Business Cycles (p. 3114)</cite>
+        "Unlike rolling reestimation, which faces the issue that <strong>topics in one rolling sample are delinked from topics in a prior sample</strong>, oLDA preserves a coherent topic interpretation over time."
+        <cite>Bybee et al. (2024), Business News and Business Cycles</cite>
       </blockquote>
       <blockquote style="margin-top: 12px;">
-        "Ideally, one might have preferred also updating the topic model recursively. However, recursively re-estimating the topic model is a very computationally demanding task, and building up the posterior distributions takes roughly one week using our infrastructure."
-        <cite>Larsen and Thorsrud - 2019 - The value of news for economic developments (pp. 209–210)</cite>
+        "Ideally, one might have preferred also updating the topic model recursively. However, recursively re-estimating the topic model is a very computationally demanding task…"
+        <cite>Larsen and Thorsrud (2019), The Value of News for Economic Developments</cite>
       </blockquote>
-      <p class="note" style="margin-top: 10px;">Two independent papers in this literature considered recursive reestimation and rejected it. The Bybee critique applies to our Ver2's disjoint checkpoints regardless of whether windows roll or expand.</p>
-    </div>
-    <div>
-      <p style="font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 10px;">Additional concerns (our analysis):</p>
-      <ul class="plain">
-        <li><strong>Topic ID instability.</strong> Our disjoint design produces LDA uniqueness ratio 0.86 vs BERTopic 0.45 across checkpoints. Partly induced by the design choice itself — a pedantic reviewer can argue this is a stress test, not an intrinsic LDA property.</li>
-        <li><strong>Feature-to-observation ratio.</strong> ~4×150 = 600 topic features vs ~138 OOS months. Hong et al. ratio: 180 features / 258 months — our Ver2 is harder on regularization.</li>
-        <li><strong>Structural break at checkpoint boundaries.</strong> Feature dimensionality expands when the calendar crosses a cutoff, creating a discontinuity inside the OOS window.</li>
-        <li><strong>Empirical results.</strong> Ver2 LDA (K=150) rRMSE: 0.876 / 0.872 / 0.886 / 0.851 vs AR. Weaker than Hong et al.'s WSJ-LDA at 12m ≈ 0.696.</li>
+
+      <p style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--light); margin-top: 18px; margin-bottom: 6px;">What Method D does</p>
+      <ul class="plain" style="font-size: 0.88rem;">
+        <li>Estimate several frozen topic models at different checkpoints, e.g. 1998, 2005, 2012, and 2019.</li>
+        <li>Each article is encoded using the most recent checkpoint available before that article's month.</li>
+        <li>Real-time feasible: no article uses a topic model trained on future articles.</li>
+        <li>However, the topic representation is no longer a single stable topic space across the full OOS window.</li>
       </ul>
+    </div>
+
+    <div>
+      <p style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--light); margin-bottom: 6px;">Why this is not a clean look-ahead-bias robustness check</p>
+      <ul class="plain" style="font-size: 0.88rem;">
+        <li><strong>1. Topic identity is not continuous across checkpoints.</strong><br>
+          <code style="font-size: 0.8em; background: #f0f0f0; padding: 1px 4px; border-radius: 2px;">ckpt_2005_topic_17</code> and <code style="font-size: 0.8em; background: #f0f0f0; padding: 1px 4px; border-radius: 2px;">ckpt_2012_topic_17</code> are not necessarily the same economic narrative. This weakens coefficient interpretation, topic importance, and narrative retrieval.</li>
+        <li style="margin-top: 8px;"><strong>2. Feature dimension expands mechanically.</strong><br>
+          With 4 checkpoints and K = 180, the model receives 4 × 180 = 720 topic features plus AR lags — much harder for LASSO / ENet / PCA than the 180-topic full-sample design.</li>
+        <li style="margin-top: 8px;"><strong>3. Active features are sparse by construction.</strong><br>
+          In each month, only the active checkpoint's topic columns are nonzero. The downstream model learns checkpoint-specific feature blocks rather than one stable representation.</li>
+        <li style="margin-top: 8px;"><strong>4. Checkpoint boundaries create artificial regime shifts.</strong><br>
+          When the active checkpoint changes, the feature representation changes discontinuously. The forecasting model may partly capture checkpoint transitions rather than news attention.</li>
+      </ul>
+      <p class="note" style="margin-top: 10px;">Method D is useful as an exploratory real-time-feasible stress test, but should not be treated as the primary leakage robustness check — it changes both the topic representation and the downstream ML feature space. The preferred benchmark is <strong>Method A: single-checkpoint frozen topic model</strong>.</p>
     </div>
   </div>
 </div>
